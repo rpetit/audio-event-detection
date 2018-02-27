@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.stats import norm
 import librosa
 
 from event_detection import PitchModel, detect_event
