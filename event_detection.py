@@ -1,3 +1,4 @@
+from scipy.stats import norm
 import numpy as np
 
 
@@ -27,6 +28,28 @@ class EventModel:
     @property
     def num_hidden_states(self):
         return self._num_hidden_states
+
+
+class PitchModel(EventModel):
+
+    def __init__(self, pitch_spec, amplitude_variance):
+        amplitude_lower_bound = -80 * np.ones_like(pitch_spec)
+        amplitude_upper_bound = np.zeros_like(pitch_spec)
+
+        a = np.array([[1]])
+        pi = np.array([1])
+
+        # truncated normal density function
+        def b(i, spec):
+            cdf_lower_bound = norm.cdf(
+                np.linalg.norm(amplitude_lower_bound - pitch_spec) / amplitude_variance)
+            cdf_upper_bound = norm.cdf(
+                np.linalg.norm(amplitude_upper_bound - pitch_spec) / amplitude_variance)
+            normalizing_constant = amplitude_variance * (cdf_upper_bound - cdf_lower_bound)
+
+            return norm.pdf(np.linalg.norm(spec - pitch_spec) / amplitude_variance) / normalizing_constant
+
+        super(PitchModel, self).__init__(a, b, pi)
 
 
 def detect_event(model, x, epsilon, delta):
