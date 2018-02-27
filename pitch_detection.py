@@ -10,7 +10,7 @@ filename = 'sound.wav'
 y, sr = librosa.load(filename)
 S = librosa.amplitude_to_db(librosa.stft(y), ref=np.max)
 S = S[:freq_bins, :T]
-x = S.transpose()
+X = S.transpose()
 
 do_spec = np.mean(S[:, :37], axis=1)
 mi_spec = np.mean(S[:, 37:71], axis=1)
@@ -39,14 +39,14 @@ for t in range(T):
 
     # cumulative likelihood
     if t == 0:
-        v[t] = b(x[t]) / epsilon
+        v[t] = b(X[t]) / epsilon
     else:
-        v1 = b(x[t]) / epsilon
-        v2 = v[t - 1] * b(x[t]) / epsilon
+        v1 = b(X[t]) / epsilon
+        v2 = v[t - 1] * b(X[t]) / epsilon
         v[t] = max(v1, v2)
 
         # starting position
-        if v[t] == b(x[t]) / epsilon:
+        if v[t] == b(X[t]) / epsilon:
             s[t] = t
         else:
             s[t] = s[t - 1]
