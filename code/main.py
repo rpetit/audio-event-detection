@@ -1,12 +1,12 @@
 import numpy as np
 import librosa
 
-from event_detection import PitchModel, detect_event
+from event_models import PitchModel
 
 num_time_steps = 110
 num_freq_bins = 100
 
-filename = 'sound.wav'
+filename = '../data/sound.wav'
 y, sr = librosa.load(filename)
 spectrum = librosa.amplitude_to_db(librosa.stft(y), ref=np.max)
 spectrum = spectrum[:num_time_steps, :num_freq_bins]
@@ -20,7 +20,7 @@ amplitude_variance = 100
 x = spectrum.transpose()
 
 model = PitchModel(do_spec, amplitude_variance)
-epsilon = 1
+epsilon = 1.2
 delta = 3
 
-detect_event(model, x, epsilon, delta)
+model.detect_event(x, epsilon, delta)
