@@ -1,7 +1,8 @@
 import numpy as np
 import librosa
 
-from event_models import SimplePitchModel, ComplexPitchModel
+from event_models import SimplePitchModel, ComplexPitchModel, PitchSequenceModel
+from spectrum_generation import generate_spectrum
 
 
 def simple_pitch_detection(pitch='do'):
@@ -26,8 +27,8 @@ def simple_pitch_detection(pitch='do'):
 
     pitch_specs = {'do': do_spec, 'mi': mi_spec, 'sol': sol_spec}
 
-    model = SimplePitchModel(pitch_specs[pitch], 50)
-    model.detect_event(x, 0.1, 3)
+    model = SimplePitchModel(pitch_specs[pitch], 10)
+    model.detect_event(x, 0.01, 3)
 
 
 def complex_pitch_detection():
@@ -39,8 +40,7 @@ def complex_pitch_detection():
     num_freq_bins = 100
 
     spectrum = spectrum[:num_freq_bins, :num_time_steps]
-    x = spectrum.transpose()
-    x = x + 1e-6
+    x = spectrum.transpose() + 1e-6
 
     attack_spec = np.mean(x[36:40], axis=0) + np.mean(x[105:109], axis=0)
     attack_spec += np.mean(x[179:183], axis=0) + np.mean(x[203:207], axis=0)
@@ -57,4 +57,30 @@ def complex_pitch_detection():
     model.detect_event(x, 0.19, 3)
 
 
-simple_pitch_detection('mi')
+def pitch_sequence_detection():
+    filename = '../data/bach.mp3'
+    y, sr = librosa.load(filename, duration=20)
+    y = y[:441000]
+    spectrum = np.abs(librosa.stft(y))
+
+    num_time_steps = spectrum.shape[1]
+    num_freq_bins = 1024
+
+    spectrum = spectrum[:num_freq_bins, :num_time_steps]
+    x = spectrum.transpose() + 1e-6
+
+    fs = 22050
+    a0 = 1
+    b = 0.8
+    n_window = 1024
+    n_fft = 2 * n_window
+
+    g3_spec = generate_spectrum(392, fs, a0, b, n_window, n_fft)
+    c4_spec = generate_spectrum(520, fs, a0, b, n_window, n_fft)
+
+    model = PitchSequenceModel(np.array([g3_spec, c4_spec]), 2)
+
+    model.detect_event(x, 1e-9, 1)
+
+
+pitch_sequence_detection()

@@ -1,4 +1,3 @@
-from scipy.stats import norm
 import numpy as np
 
 
@@ -60,12 +59,11 @@ class HiddenMarkovEventModel:
 
                     candidates.remove(c)
 
-    def train_model(self):
-        # TODO: implement training (supervised / unsupervised) ?
+    def train_model(self, data):
+        # TODO: implement Baum-Welch algorithm
         pass
 
 
-# TODO: clarify the difference between using gaussian and KL-based emission distributions
 class SimplePitchModel(HiddenMarkovEventModel):
 
     def __init__(self, pitch_spec, scaling_factor):
@@ -96,3 +94,20 @@ class ComplexPitchModel(HiddenMarkovEventModel):
             return np.exp(- scaling_factor * (ref_specs[i] * np.log(ref_specs[i] / normalized_spec)).sum())
 
         super(ComplexPitchModel, self).__init__(a, b, pi)
+
+
+class PitchSequenceModel(HiddenMarkovEventModel):
+
+    def __init__(self, ref_specs, scaling_factor):
+        spec_shapes = [spec.shape for spec in ref_specs]
+        assert(np.all(spec_shapes == spec_shapes[0] * np.ones_like(spec_shapes)))
+
+        pi = np.array([1, 0])
+        transit_probs = np.array([[0.5, 0.5], [0, 1]])
+
+        # emission density functions (exponential of minus the Kullback-Leibler divergence)
+        def b(i, spec):
+            normalized_spec = spec / np.sum(spec)
+            return np.exp(- scaling_factor * (ref_specs[i] * np.log(ref_specs[i] / normalized_spec)).sum())
+
+        super(PitchSequenceModel, self).__init__(transit_probs, b, pi)
