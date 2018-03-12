@@ -1,8 +1,8 @@
 import numpy as np
 import librosa
 
-from event_models import SimplePitchModel, ComplexPitchModel, PitchSequenceModel
-from spectrum_generation import generate_spectrum
+from hidden_markov_models import SimplePitchModel, ComplexPitchModel, PitchSequenceModel
+from utils import generate_spectrum, export_subsequences
 
 
 def simple_pitch_detection(pitch='do'):
@@ -28,7 +28,7 @@ def simple_pitch_detection(pitch='do'):
     pitch_specs = {'do': do_spec, 'mi': mi_spec, 'sol': sol_spec}
 
     model = SimplePitchModel(pitch_specs[pitch], 10)
-    model.detect_event(x, 0.01, 3)
+    _ = model.find_subsequences(x, 0.01, 3)
 
 
 def complex_pitch_detection():
@@ -54,13 +54,13 @@ def complex_pitch_detection():
 
     model = ComplexPitchModel(attack_spec, sustain_spec, 20)
 
-    model.detect_event(x, 0.19, 3)
+    _ = model.find_subsequences(x, 0.19, 3)
 
 
 def pitch_sequence_detection():
-    filename = '../data/bach.mp3'
-    y, sr = librosa.load(filename, duration=20)
-    y = y[:441000]
+    filename = '../data/bach.wav'
+    y, fs = librosa.load(filename, sr=22050, duration=20)
+    y = y[:fs * 20]
     spectrum = np.abs(librosa.stft(y))
 
     num_time_steps = spectrum.shape[1]
@@ -69,18 +69,19 @@ def pitch_sequence_detection():
     spectrum = spectrum[:num_freq_bins, :num_time_steps]
     x = spectrum.transpose() + 1e-6
 
-    fs = 22050
     a0 = 1
     b = 0.8
     n_window = 1024
     n_fft = 2 * n_window
 
-    g3_spec = generate_spectrum(392, fs, a0, b, n_window, n_fft)
-    c4_spec = generate_spectrum(520, fs, a0, b, n_window, n_fft)
+    g4_spec = generate_spectrum(392, fs, a0, b, n_window, n_fft)
+    c5_spec = generate_spectrum(523, fs, a0, b, n_window, n_fft)
 
-    model = PitchSequenceModel(np.array([g3_spec, c4_spec]), 2)
+    model = PitchSequenceModel(np.array([g4_spec, c5_spec]), 1.4)
+    epsilon = 1e-6
 
-    model.detect_event(x, 1e-9, 1)
+    optimal_subsequences = model.find_subsequences(x, epsilon, 1)
+    export_subsequences(optimal_subsequences, fs, 2048 // 4, '../data/subsequences.lab')
 
 
 pitch_sequence_detection()
