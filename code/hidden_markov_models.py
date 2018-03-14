@@ -111,7 +111,7 @@ class PitchSequenceModel(HiddenMarkovModel):
         assert(np.all(spec_shapes == spec_shapes[0] * np.ones_like(spec_shapes)))
 
         pi = np.array([1, 0])
-        transit_probs = np.array([[0.5, 0.5], [0, 1]])
+        transit_probs = np.array([[0.4, 0.6], [0, 1]])
 
         # emission density functions (exponential of minus the Kullback-Leibler divergence)
         def b(i, spec):

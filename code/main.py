@@ -75,13 +75,15 @@ def pitch_sequence_detection():
     n_fft = 2 * n_window
 
     g4_spec = generate_spectrum(392, fs, a0, b, n_window, n_fft)
+    g4_spec = g4_spec / np.sum(g4_spec)
     c5_spec = generate_spectrum(523, fs, a0, b, n_window, n_fft)
+    c5_spec = c5_spec / np.sum(c5_spec)
 
     model = PitchSequenceModel(np.array([g4_spec, c5_spec]), 1.4)
-    epsilon = 1e-6
+    epsilon = 0.085
 
     optimal_subsequences = model.find_subsequences(x, epsilon, 1)
-    export_subsequences(optimal_subsequences, fs, 2048 // 4, '../data/subsequences.lab')
+    export_subsequences(optimal_subsequences, fs, 2048 // 4, '../results/subsequences.lab')
 
 
 pitch_sequence_detection()
