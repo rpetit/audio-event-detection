@@ -20,7 +20,7 @@ def generate_spectrum(f0, fs, a0, b, n_window, n_fft):
     shift = fftshift(harmonic_spec_window_conv)
     output_spec = shift[:n_fft // 2]
 
-    return output_spec
+    return output_spec / np.sum(output_spec)
 
 
 def export_subsequences(subsequences, fs, hop_length, export_path):

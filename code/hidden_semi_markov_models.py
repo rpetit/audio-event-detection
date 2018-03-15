@@ -2,13 +2,15 @@ import numpy as np
 from scipy.special import gamma
 
 
-class HiddenMarkovModel:
+# TODO: set a maximum duration for segments
+class HiddenSemiMarkovModel:
 
-    def __init__(self, a, b, pi):
+    def __init__(self, a, b, p, pi):
         assert(a.ndim == 2 and pi.ndim == 1 and a.shape[0] == a.shape[1] == pi.size)
 
         self._a = a  # transition probabilities
         self._b = b  # emission density functions
+        self._p = p  # duration probability distributions
         self._pi = pi  # initial probability
 
         self._num_hidden_states = self._pi.size
@@ -18,7 +20,7 @@ class HiddenMarkovModel:
 
         num_time_steps = x.shape[0]
 
-        v = np.zeros((num_time_steps, self._num_hidden_states))  # cumulative likelihoods
+        v = np.zeros((num_time_steps, self._num_hidden_states))  # cumulative likelihoods (segment end)
         s = [[(0, 0) for _ in range(self._num_hidden_states)] for _ in range(num_time_steps)]  # starting positions
 
         candidates = set([])  # candidate sub-sequences
@@ -28,23 +30,37 @@ class HiddenMarkovModel:
 
                 # cumulative likelihood and starting position computation
                 if t == 0:
-                    v[t, i] = self._pi[i] * self._b(i, x[t]) / epsilon
+                    v[t, i] = self._pi[i] * self._b(i, x[t]) * self._p(i, 1) / epsilon
                     s[t][i] = (t, i)
                 else:
                     # cumulative likelihood in case the subsequence starts at (t, i)
-                    v1 = self._pi[i] * self._b(i, x[t]) / epsilon
+                    v1 = self._pi[i] * self._b(i, x[t]) * self._p(i, 1)
 
                     # cumulative likelihood in case the subsequence starts before (t, i)
-                    best_j = np.argmax(v[t - 1] * self._a[:, i])  # most likely hidden state at time t - 1
-                    v2 = v[t - 1][best_j] * self._a[best_j, i] * self._b(i, x[t]) / epsilon
+                    v2 = 0
+                    obs_likelihood = 1
+                    best_d = 0
+                    best_j = -1
+
+                    # loop over all possible durations for the subsequence's last segment
+                    for d in range(1, t + 2):
+                        obs_likelihood *= self._b(i, x[t - d + 1])
+                        temp_best_j = np.argmax(v[t - d] * self._a[:, i])
+                        segment_likelihood = obs_likelihood * self._p(i, d) * v[t - d, temp_best_j]
+                        segment_likelihood *= self._a[temp_best_j, i]
+
+                        if v2 < segment_likelihood:
+                            v2 = segment_likelihood
+                            best_d = d
+                            best_j = temp_best_j
 
                     # selection of the most likely configuration
                     if v1 > v2:
                         s[t][i] = (t, i)
-                        v[t, i] = v1
+                        v[t, i] = v1 / epsilon
                     else:
-                        s[t][i] = s[t - 1][best_j]
-                        v[t, i] = v2
+                        s[t][i] = s[t - best_d][best_j]
+                        v[t, i] = v2 / epsilon ** best_d
 
                 # candidate sub-sequences update
                 if v[t, i] >= 1 / epsilon ** delta:
@@ -73,53 +89,16 @@ class HiddenMarkovModel:
 
         return optimal_subsequences
 
-    def train_model(self, data):
-        # TODO: implement Baum-Welch algorithm
-        pass
 
+class SemiMarkovPitchSequenceModel(HiddenSemiMarkovModel):
 
-# TODO: deal with the normalizing constant in emission density functions (this value is different for each hidden state)
-class SimplePitchModel(HiddenMarkovModel):
-
-    def __init__(self, pitch_spec, scaling_factor):
-        a = np.array([[1]])
-        pi = np.array([1])
-
-        # emission density functions (Dirichlet)
-        def b(i, spec):
-            normalized_spec = spec / np.sum(spec)
-            return np.exp(- scaling_factor * (pitch_spec * np.log(pitch_spec / normalized_spec)).sum())
-
-        super(SimplePitchModel, self).__init__(a, b, pi)
-
-
-class ComplexPitchModel(HiddenMarkovModel):
-
-    def __init__(self, attack_spec, sustain_spec, scaling_factor):
-        assert(attack_spec.shape == sustain_spec.shape)
-
-        ref_specs = [attack_spec, sustain_spec]
-
-        a = np.array([[0.2, 0.8], [0, 1]])
-        pi = np.array([1, 0])
-
-        # emission density functions (Dirichlet)
-        def b(i, spec):
-            normalized_spec = spec / np.sum(spec)
-            return np.exp(- scaling_factor * (ref_specs[i] * np.log(ref_specs[i] / normalized_spec)).sum())
-
-        super(ComplexPitchModel, self).__init__(a, b, pi)
-
-
-class PitchSequenceModel(HiddenMarkovModel):
-
-    def __init__(self, ref_specs, scaling_factor):
+    def __init__(self, ref_specs, mean_durations, scaling_factor):
 
         spec_shapes = [spec.shape for spec in ref_specs]
         assert(np.all(spec_shapes == spec_shapes[0] * np.ones_like(spec_shapes)))
         assert(np.isclose(np.sum(ref_specs, axis=1), np.ones(ref_specs.shape[0])).all())
 
-        a = np.array([[0.4, 0.6], [0, 1]])
+        a = np.array([[0, 1], [0, 1]])
         pi = np.array([1, 0])
 
         # emission density functions (Dirichlet)
@@ -127,4 +106,8 @@ class PitchSequenceModel(HiddenMarkovModel):
             normalized_spec = spec / np.sum(spec)
             return np.exp(- scaling_factor * (ref_specs[i] * np.log(ref_specs[i] / normalized_spec)).sum())
 
-        super(PitchSequenceModel, self).__init__(a, b, pi)
+        # duration probability distributions (Poisson)
+        def p(i, d):
+            return np.exp(mean_durations[i] ** d * np.exp(- mean_durations[i]) / gamma(d + 1)) if d < 100 else 0
+
+        super(SemiMarkovPitchSequenceModel, self).__init__(a, b, p, pi)

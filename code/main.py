@@ -2,6 +2,7 @@ import numpy as np
 import librosa
 
 from hidden_markov_models import SimplePitchModel, ComplexPitchModel, PitchSequenceModel
+from hidden_semi_markov_models import SemiMarkovPitchSequenceModel
 from utils import generate_spectrum, export_subsequences
 
 
@@ -75,15 +76,40 @@ def pitch_sequence_detection():
     n_fft = 2 * n_window
 
     g4_spec = generate_spectrum(392, fs, a0, b, n_window, n_fft)
-    g4_spec = g4_spec / np.sum(g4_spec)
-    c5_spec = generate_spectrum(523, fs, a0, b, n_window, n_fft)
-    c5_spec = c5_spec / np.sum(c5_spec)
+    c5_spec = generate_spectrum(522, fs, a0, b, n_window, n_fft)
 
     model = PitchSequenceModel(np.array([g4_spec, c5_spec]), 1.4)
-    epsilon = 0.085
 
+    epsilon = 0.075
     optimal_subsequences = model.find_subsequences(x, epsilon, 1)
     export_subsequences(optimal_subsequences, fs, 2048 // 4, '../results/subsequences.lab')
 
 
-pitch_sequence_detection()
+def semi_markov_pitch_sequence_detection():
+    filename = '../data/bach.wav'
+    y, fs = librosa.load(filename, sr=22050, duration=20)
+    y = y[:fs * 20]
+    spectrum = np.abs(librosa.stft(y))
+
+    num_time_steps = spectrum.shape[1]
+    num_freq_bins = 1024
+
+    spectrum = spectrum[:num_freq_bins, :num_time_steps]
+    x = spectrum.transpose() + 1e-6
+
+    a0 = 1
+    b = 0.8
+    n_window = 1024
+    n_fft = 2 * n_window
+
+    g4_spec = generate_spectrum(392, fs, a0, b, n_window, n_fft)
+    c5_spec = generate_spectrum(522, fs, a0, b, n_window, n_fft)
+
+    model = SemiMarkovPitchSequenceModel(np.array([g4_spec, c5_spec]), [8.6, 8.6], 1.4)
+
+    epsilon = 0.075
+    optimal_subsequences = model.find_subsequences(x, epsilon, 1)
+    export_subsequences(optimal_subsequences, fs, 2048 // 4, '../results/subsequences.lab')
+
+
+semi_markov_pitch_sequence_detection()
