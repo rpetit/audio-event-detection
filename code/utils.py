@@ -26,7 +26,7 @@ def generate_spectrum(f0, fs, a0, b, n_window, n_fft):
 def export_subsequences(subsequences, fs, hop_length, export_path):
     with open(export_path, 'w') as f:
         for i in range(len(subsequences)):
-            start_time = subsequences[i][1][0] * hop_length / fs
-            end_time = subsequences[i][2][0] * hop_length / fs
+            start_time = subsequences[i][1] * hop_length / fs
+            end_time = subsequences[i][2] * hop_length / fs
             f.write("{:.6f} {:.6f} subsequence{:d}\n".format(start_time, start_time, i + 1))
             f.write("{:.6f} {:.6f} subsequence{:d}\n".format(end_time, end_time, i + 1))

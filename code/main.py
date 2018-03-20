@@ -4,6 +4,7 @@ import librosa
 from hidden_markov_models import SimplePitchModel, ComplexPitchModel, PitchSequenceModel
 from hidden_semi_markov_models import SemiMarkovPitchSequenceModel
 from utils import generate_spectrum, export_subsequences
+from event_models import PitchSequenceModel
 
 
 def simple_pitch_detection(pitch='do'):
@@ -105,10 +106,10 @@ def semi_markov_pitch_sequence_detection():
     g4_spec = generate_spectrum(392, fs, a0, b, n_window, n_fft)
     c5_spec = generate_spectrum(522, fs, a0, b, n_window, n_fft)
 
-    model = SemiMarkovPitchSequenceModel(np.array([g4_spec, c5_spec]), [8.6, 8.6], 1.4)
+    model = PitchSequenceModel(np.array([g4_spec, c5_spec]), [8, 8], 1.4)
 
-    epsilon = 0.075
-    optimal_subsequences = model.find_subsequences(x, epsilon, 1)
+    epsilon = 0.09
+    optimal_subsequences = model.find_subsequences(x, epsilon, 1, 50)
     export_subsequences(optimal_subsequences, fs, 2048 // 4, '../results/subsequences.lab')
 
 
