@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.special import gamma
 
+from utils import overlap
+
 
 class SegmentSequenceModel:
 
@@ -11,7 +13,7 @@ class SegmentSequenceModel:
 
         self._num_hidden_states = num_hidden_states
 
-    def find_subsequences(self, x, epsilon, delta, max_segment_duration):
+    def find_subsequences(self, x, epsilon, delta, max_segment_length):
         optimal_subsequences = []
 
         num_time_steps = x.shape[0]  # number of time steps in the data
@@ -32,7 +34,7 @@ class SegmentSequenceModel:
                 emission_density_prod = 1  # product of the emission density values
                 best_d = 0  # most likely segment duration
 
-                for d in range(1, min(t + 2 - i, max_segment_duration)):  # loop over all possible segment durations
+                for d in range(1, min(t + 2 - i, max_segment_length)):  # loop over all possible segment durations
                     emission_density_prod *= self._b(i, x[t - d + 1])
 
                     if i == 0:  # this is the subsequence's first segment
@@ -51,18 +53,17 @@ class SegmentSequenceModel:
             s_subsequence = s[t][self._num_hidden_states - 1]
 
             # add a candidate subsequence or update candidate subsequences
+            # TODO: deal with overlapping subsequences
             if v_subsequence >= 1 / epsilon ** delta:
-                if s_subsequence not in set([c[1] for c in candidates]):
+                overlapping_subsequences = set([c for c in candidates if overlap(c[1], c[2], s_subsequence, t)])
+                if all(c[0] < v_subsequence for c in overlapping_subsequences):
+                    for c in overlapping_subsequences:
+                        candidates.remove(c)
                     candidates.add((v_subsequence, s_subsequence, t))
-                else:
-                    for c in set(candidates):
-                        if s_subsequence == c[1] and v_subsequence >= c[0]:
-                            candidates.remove(c)
-                            candidates.add((v_subsequence, s_subsequence, t))
 
             # optimal sub-sequences report
             for c in set(candidates):
-                if c[1] not in set([s[t][i] for i in range(2)]) or t == num_time_steps - 1:
+                if c[1] not in set([s[t][i] for i in range(self._num_hidden_states)]) or t == num_time_steps - 1:
                     length = c[2] - c[1] + 1
                     likelihood = c[0] * epsilon ** length
 
@@ -83,7 +84,7 @@ class PitchSequenceModel(SegmentSequenceModel):
     def __init__(self, ref_specs, mean_durations, scaling_factor):
 
         spec_shapes = [spec.shape for spec in ref_specs]
-        assert(np.all(spec_shapes == spec_shapes[0] * np.ones_like(spec_shapes)))
+        assert(ref_specs.ndim == 2 and np.all(spec_shapes == spec_shapes[0] * np.ones_like(spec_shapes)))
         assert(np.isclose(np.sum(ref_specs, axis=1), np.ones(ref_specs.shape[0])).all())
 
         num_hidden_states = ref_specs.shape[0]
@@ -98,3 +99,23 @@ class PitchSequenceModel(SegmentSequenceModel):
             return mean_durations[i] ** d * np.exp(- mean_durations[i]) / gamma(d + 1)
 
         super(PitchSequenceModel, self).__init__(b, p, num_hidden_states)
+
+
+class SimplePitchModel(PitchSequenceModel):
+
+    def __init__(self, ref_spec, mean_duration, scaling_factor):
+
+        assert(ref_spec.ndim == 1 and np.isclose(np.sum(ref_spec), 1).all())
+
+        super(SimplePitchModel, self).__init__(np.array([ref_spec]), [mean_duration], scaling_factor)
+
+
+class ComplexPitchModel(PitchSequenceModel):
+
+    def __init__(self, attack_spec, sustain_spec, mean_attack_duration, mean_sustain_duration, scaling_factor):
+
+        assert(attack_spec.ndim == 1 and sustain_spec.ndim == 1 and attack_spec.shape == sustain_spec.shape)
+
+        super(ComplexPitchModel, self).__init__(np.array([attack_spec, sustain_spec]),
+                                                [mean_attack_duration, mean_sustain_duration],
+                                                scaling_factor)

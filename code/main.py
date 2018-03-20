@@ -1,41 +1,45 @@
 import numpy as np
 import librosa
 
-from hidden_markov_models import SimplePitchModel, ComplexPitchModel, PitchSequenceModel
-from hidden_semi_markov_models import SemiMarkovPitchSequenceModel
 from utils import generate_spectrum, export_subsequences
-from event_models import PitchSequenceModel
+from event_models import SimplePitchModel, ComplexPitchModel, PitchSequenceModel
 
 
 def simple_pitch_detection(pitch='do'):
     filename = '../data/sound1.wav'
-    y, sr = librosa.load(filename)
+    y, fs = librosa.load(filename)
     spectrum = np.abs(librosa.stft(y))
 
-    num_time_steps = spectrum.shape[1]
-    num_freq_bins = 20
+    num_time_steps = 110
+    num_freq_bins = 1024
 
     spectrum = spectrum[:num_freq_bins, :num_time_steps]
     x = spectrum.transpose()
 
-    do_spec = np.mean(x[:37], axis=0)
-    do_spec = do_spec / np.sum(do_spec)
+    a0 = 1
+    b = 0.8
+    n_window = 1024
+    n_fft = 2 * n_window
 
-    mi_spec = np.mean(x[37:71], axis=0)
-    mi_spec = mi_spec / np.sum(mi_spec)
+    c3_spec = generate_spectrum(132, fs, a0, b, n_window, n_fft)
+    e3_spec = generate_spectrum(165, fs, a0, b, n_window, n_fft)
+    g3_spec = generate_spectrum(198, fs, a0, b, n_window, n_fft)
+    pitch_specs = {'do': c3_spec, 'mi': e3_spec, 'sol': g3_spec}
 
-    sol_spec = np.mean(x[71:110], axis=0)
-    sol_spec = sol_spec / np.sum(sol_spec)
+    mean_duration = 40
+    scaling_factor = 1.4
+    model = SimplePitchModel(pitch_specs[pitch], mean_duration, scaling_factor)
 
-    pitch_specs = {'do': do_spec, 'mi': mi_spec, 'sol': sol_spec}
-
-    model = SimplePitchModel(pitch_specs[pitch], 10)
-    _ = model.find_subsequences(x, 0.01, 3)
+    epsilon = 0.052
+    delta = 3
+    max_segment_length = 60
+    optimal_subsequences = model.find_subsequences(x, epsilon, delta, max_segment_length)
+    export_subsequences(optimal_subsequences, fs, n_fft // 4, '../results/simple_pitch.lab')
 
 
 def complex_pitch_detection():
     filename = '../data/sound2.wav'
-    y, sr = librosa.load(filename)
+    y, fs = librosa.load(filename)
     spectrum = np.abs(librosa.stft(y))
 
     num_time_steps = spectrum.shape[1]
@@ -43,6 +47,8 @@ def complex_pitch_detection():
 
     spectrum = spectrum[:num_freq_bins, :num_time_steps]
     x = spectrum.transpose() + 1e-6
+
+    n_fft = 2048
 
     attack_spec = np.mean(x[36:40], axis=0) + np.mean(x[105:109], axis=0)
     attack_spec += np.mean(x[179:183], axis=0) + np.mean(x[203:207], axis=0)
@@ -54,9 +60,16 @@ def complex_pitch_detection():
     sustain_spec *= 1/4
     sustain_spec = sustain_spec / np.sum(sustain_spec)
 
-    model = ComplexPitchModel(attack_spec, sustain_spec, 20)
+    attack_mean_duration = 4
+    sustain_mean_duration = 40
+    scaling_factor = 1.4
+    model = ComplexPitchModel(attack_spec, sustain_spec, attack_mean_duration, sustain_mean_duration, scaling_factor)
 
-    _ = model.find_subsequences(x, 0.19, 3)
+    epsilon = 0.8
+    delta = 3
+    max_segment_length = 60
+    optimal_subsequences = model.find_subsequences(x, epsilon, delta, max_segment_length)
+    export_subsequences(optimal_subsequences, fs, n_fft // 4, '../results/complex_pitch.lab')
 
 
 def pitch_sequence_detection():
@@ -79,38 +92,17 @@ def pitch_sequence_detection():
     g4_spec = generate_spectrum(392, fs, a0, b, n_window, n_fft)
     c5_spec = generate_spectrum(522, fs, a0, b, n_window, n_fft)
 
-    model = PitchSequenceModel(np.array([g4_spec, c5_spec]), 1.4)
+    mean_durations = [8, 8]
+    scaling_factor = 1.4
 
-    epsilon = 0.075
-    optimal_subsequences = model.find_subsequences(x, epsilon, 1)
-    export_subsequences(optimal_subsequences, fs, 2048 // 4, '../results/subsequences.lab')
-
-
-def semi_markov_pitch_sequence_detection():
-    filename = '../data/bach.wav'
-    y, fs = librosa.load(filename, sr=22050, duration=20)
-    y = y[:fs * 20]
-    spectrum = np.abs(librosa.stft(y))
-
-    num_time_steps = spectrum.shape[1]
-    num_freq_bins = 1024
-
-    spectrum = spectrum[:num_freq_bins, :num_time_steps]
-    x = spectrum.transpose() + 1e-6
-
-    a0 = 1
-    b = 0.8
-    n_window = 1024
-    n_fft = 2 * n_window
-
-    g4_spec = generate_spectrum(392, fs, a0, b, n_window, n_fft)
-    c5_spec = generate_spectrum(522, fs, a0, b, n_window, n_fft)
-
-    model = PitchSequenceModel(np.array([g4_spec, c5_spec]), [8, 8], 1.4)
+    model = PitchSequenceModel(np.array([g4_spec, c5_spec]), mean_durations, scaling_factor)
 
     epsilon = 0.09
-    optimal_subsequences = model.find_subsequences(x, epsilon, 1, 50)
-    export_subsequences(optimal_subsequences, fs, 2048 // 4, '../results/subsequences.lab')
+    delta = 1
+    max_segment_length = 50
+
+    optimal_subsequences = model.find_subsequences(x, epsilon, delta, max_segment_length)
+    export_subsequences(optimal_subsequences, fs, n_fft // 4, '../results/pitch_sequence.lab')
 
 
-semi_markov_pitch_sequence_detection()
+complex_pitch_detection()

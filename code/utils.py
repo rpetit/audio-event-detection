@@ -3,6 +3,15 @@ from scipy import signal
 from scipy.fftpack import fft, fftshift
 
 
+def overlap(s1, e1, s2, e2):
+    bool1 = (s1 <= e2 and e1 >= s2)
+    bool2 = (e1 >= s2 and s1 <= e2)
+    bool3 = (s1 <= s2 and e1 >= e2)
+    bool4 = (s1 >= s2 and e1 <= e2)
+
+    return bool1 or bool2 or bool3 or bool4
+
+
 def generate_spectrum(f0, fs, a0, b, n_window, n_fft):
     hann_window = signal.hann(n_window)
     hann_window_fft = fft(hann_window, n_fft) / (len(hann_window) / 2.0)
