@@ -1,4 +1,5 @@
 __pycache__/
 .idea/
 .DS_Store
-results/
+examples/results/
+examples/data/bach.mid
