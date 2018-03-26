@@ -113,7 +113,7 @@ class PitchSequenceModel(HiddenMarkovModel):
 
         def b(i, spec):
             normalized_spec = spec / np.sum(spec)
-            return np.exp(- beta * pitch_specs[i] * np.log(pitch_specs[i] / normalized_spec).sum())
+            return np.exp(- beta * (pitch_specs[i] * np.log(pitch_specs[i] / normalized_spec)).sum())
 
         super(PitchSequenceModel, self).__init__(a, b, pi)
 

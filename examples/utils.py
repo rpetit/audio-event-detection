@@ -39,7 +39,7 @@ def import_annotations(file_path):
 
     with open(file_path, 'r') as f:
         for line in f.readlines():
-            time = line.split("\\")[0]
-            annotations.append(time)
+            time = line.split("\t")[0]
+            annotations.append(float(time))
 
     return annotations
