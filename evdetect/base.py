@@ -2,6 +2,7 @@ from abc import abstractmethod
 
 
 class EventModel:
+    """Abstract event model class"""
 
     def __init__(self):
         self._x = None
@@ -11,7 +12,43 @@ class EventModel:
         self._candidates = None
         self._reported_subsequences = None
 
-    def init_detection(self, x, epsilon, delta):
+    def detect_event(self, x, epsilon, delta):
+        """Detection interface
+
+        Parameters
+        ----------
+        x : ndarray, shape (num_time_steps, num_freq_bins)
+            The input amplitude spectrum
+        epsilon : float
+            Detection threshold
+        delta : float
+            Subsequence length penalization
+
+        Returns
+        -------
+        list
+            List of reported subsequences
+
+        """
+        self._init_detection(x, epsilon, delta)
+        reported_subsequences = self._perform_detection()
+        self._end_detection()
+
+        return reported_subsequences
+
+    def _init_detection(self, x, epsilon, delta):
+        """Initializes the detection
+
+        Parameters
+        ----------
+        x : ndarray, shape (num_time_steps, num_freq_bins)
+            The input amplitude spectrum
+        epsilon : float
+            Detection threshold
+        delta : float
+            Subsequence length penalization
+
+        """
         self._x = x
         self._epsilon = epsilon
         self._delta = delta
@@ -19,9 +56,26 @@ class EventModel:
         self._candidates = set([])
         self._reported_subsequences = []
 
-    def report_subsequences(self, t):
+    def _end_detection(self):
+        """Ends the detection"""
+        self._x = None
+        self._epsilon = None
+        self._delta = None
+        self._num_time_steps = None
+        self._candidates = None
+        self._reported_subsequences = None
+
+    def _report_subsequences(self, t):
+        """Report all the subsequences that should be reported at a given time
+
+        Parameters
+        ----------
+        t : int
+            Current time index
+
+        """
         for c in set(self._candidates):
-            if self.should_report(c, t):
+            if self._should_report(c, t):
                 length = c[2][0] - c[1][0] + 1
                 likelihood = c[0] * self._epsilon ** length
 
@@ -32,23 +86,32 @@ class EventModel:
                 self._reported_subsequences.append(c)
                 self._candidates.remove(c)
 
-    def end_detection(self):
-        print('\n' + "Detection completed ({} subsequences found)".format(len(self._reported_subsequences)))
-        reported_subsequences = self._reported_subsequences
+    @abstractmethod
+    def _perform_detection(self):
+        """Main detection method
 
-        self._x = None
-        self._epsilon = None
-        self._delta = None
-        self._num_time_steps = None
-        self._candidates = None
-        self._reported_subsequences = None
+        Returns
+        -------
+        list
+            List of reported subsequences
 
-        return reported_subsequences
+        """
 
     @abstractmethod
-    def should_report(self, c, t):
-        pass
+    def _should_report(self, c, t):
+        """Whether a candidate subsequence should be reported at a given time or not
 
-    @abstractmethod
-    def detect_event(self, x, epsilon, delta):
+        Parameters
+        ----------
+        c : tuple
+            Candidate subsequence
+        t : int
+            Current time index
+
+        Returns
+        -------
+        bool
+            True if c should be reported, False otherwise
+
+        """
         pass
