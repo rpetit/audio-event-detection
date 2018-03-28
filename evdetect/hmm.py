@@ -139,8 +139,9 @@ class HiddenMarkovModel:
 
             # M step
             # TODO: deal with emission parameters
-            new_a = np.zeros((self.n_states, self.n_states))
-            new_pi = np.zeros(self.n_states)
+            new_a = np.zeros_like(self.a)
+            new_mu = np.zeros_like(self.mu)
+            new_pi = np.zeros_like(self.pi)
 
             for i in range(self.n_states):
                 for j in range(self.n_states):
@@ -150,8 +151,8 @@ class HiddenMarkovModel:
                 new_a[i] *= 1 / np.sum(new_a[i])
 
             for k in range(num_train_seq):
+                new_mu += 1 / seq_likelihood * np.sum(gamma[k] * x_train[k])
                 new_pi += 1 / seq_likelihoods[k] * gamma[k][0]
-
             new_pi *= 1 / np.sum(new_pi)
 
             self.a = new_a
