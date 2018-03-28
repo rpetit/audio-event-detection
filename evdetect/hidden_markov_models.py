@@ -1,3 +1,7 @@
+"""
+Hidden Markov event models
+"""
+
 import numpy as np
 
 from evdetect.base import EventModel
@@ -17,16 +21,13 @@ class HiddenMarkovModel(EventModel):
     """
 
     def __init__(self, a, b, pi):
+        assert(a.ndim == 2 and pi.ndim == 1 and a.shape[0] == a.shape[1] == pi.size)
+
         self._a = a
         self._b = b
         self._pi = pi
 
         self._num_hidden_states = self._pi.size
-
-        super(HiddenMarkovModel, self).__init__()
-
-        self._v = None  # cumulative likelihoods
-        self._s = None  # starting positions
 
     def _init_detection(self, x, epsilon, delta):
         super(HiddenMarkovModel, self)._init_detection(x, epsilon, delta)
@@ -34,11 +35,16 @@ class HiddenMarkovModel(EventModel):
         self._v = np.zeros((self._num_time_steps, self._num_hidden_states))
         self._s = [[(-1, -1) for _ in range(self._num_hidden_states)] for _ in range(self._num_time_steps)]
 
-    def _end_detection(self):
-        self._v = None
-        self._s = None
+    def _perform_detection(self):
+        # Viterbi-like algorithm
+        for t in range(self._num_time_steps):
+            for i in range(self._num_hidden_states):
+                self._compute_cumulative_likelihood(t, i)
 
-        super(HiddenMarkovModel, self)._end_detection()
+            self._update_candidates(t)
+            self._report_subsequences(t)
+
+        return self._reported_subsequences
 
     def _compute_cumulative_likelihood(self, t, i):
         """Cumulative likelihood computation (Viterbi-like recursion)
@@ -95,20 +101,126 @@ class HiddenMarkovModel(EventModel):
         # report if all optimal paths ending at t do not intersect with the candidates' path
         return c[1] not in set([self._s[t][i] for i in range(self._num_hidden_states)]) or t == self._num_time_steps - 1
 
-    def _perform_detection(self):
-        # Viterbi-like algorithm
-        for t in range(self._num_time_steps):
+    def learn_parameters(self, x_train, num_train_iter):
+        """Parameters learning (EM algorithm) interface
+
+        Parameters
+        ----------
+        x_train : list
+            List of training sequences
+        num_train_iter : int
+            Number of EM iterations to perform
+
+        """
+        self._init_learning(x_train, num_train_iter)
+        self._perform_learning()
+
+    def _init_learning(self, x_train, num_train_iter):
+        """Initializes parameters learning
+
+        Parameters
+        ----------
+        x_train : list
+            List of training sequences
+        num_train_iter : int
+            Number of EM iterations to perform
+
+        """
+        self._x_train = x_train
+        self._num_train_iter = num_train_iter
+
+        self._num_train_seq = len(self._x_train)
+        self._train_seq_lengths = [sequence.shape[0] for sequence in x_train]
+
+    def _perform_learning(self):
+        """Main parameters learning method"""
+
+        for _ in range(self._num_train_iter):
+
+            seq_likelihoods = []
+            gamma = []
+            xi = []
+
+            # E step
+            for k in range(self._num_train_seq):
+                seq_likelihood, gamma_k, xi_k = self._forward_backward(k)
+
+                seq_likelihoods.append(seq_likelihood)
+                gamma.append(gamma_k)
+                xi.append(xi_k)
+
+            # M step
+            # TODO: deal with emission parameters
+            new_a = np.zeros((self._num_hidden_states, self._num_hidden_states))
+            new_pi = np.zeros(self._num_hidden_states)
+
             for i in range(self._num_hidden_states):
-                self._compute_cumulative_likelihood(t, i)
+                for j in range(self._num_hidden_states):
+                    for k in range(self._num_train_seq):
+                        new_a[i, j] += 1 / seq_likelihood[k] * np.sum(xi[k][1:, i, j])
 
-            self._update_candidates(t)
-            self._report_subsequences(t)
+                new_a[i] *= 1 / np.sum(new_a[i])
 
-        return self._reported_subsequences
+            for k in range(self._num_train_seq):
+                new_pi += 1 / seq_likelihood[k] * gamma[k][0]
+
+            new_pi *= 1 / np.sum(new_pi)
+
+            self._a = new_a
+            self._pi = new_pi
+
+    def _forward_backward(self, k):
+        """Forward backward recursion
+
+        Parameters
+        ----------
+        k : int
+            Index of the considered training sequence
+
+        Returns
+        -------
+        tuple
+            (seq_likelihood, gamma, xi)
+
+        """
+        seq_length = self._train_seq_lengths[k]
+
+        alpha = np.zeros((seq_length, self._num_hidden_states))
+        beta = np.zeros((seq_length, self._num_hidden_states))
+        gamma = np.zeros((seq_length, self._num_hidden_states))
+        xi = np.zeros((seq_length, self._num_hidden_states, self._num_hidden_states))
+
+        for t in range(seq_length):
+            for i in range(self._num_hidden_states):
+                if t == 0:
+                    alpha[t, i] = self._pi[i] * self._b(i, self._x_train[k][t])
+                else:
+                    alpha[t, i] = np.sum(alpha[t - 1] * self._a[:, i] * self._b(i, self._x_train[k][t]))
+
+        for t in reversed(range(seq_length)):
+            for i in range(self._num_hidden_states):
+                if t == seq_length - 1:
+                    beta[t, i] = 1
+                else:
+                    emissions = np.array([self._b(j, self._x_train[k][t]) for j in range(self._num_hidden_states)])
+                    beta[t, i] = np.sum(self._a[i, :] * emissions * beta[t + 1])
+
+        for t in range(seq_length):
+            gamma[t] = alpha[t] * beta[t] / np.sum(alpha[t] * beta[t])
+
+            if t > 0:
+                for j in range(self._num_hidden_states):
+                    xi[t, :, j] = alpha[t - 1] * self._a[:, j] * self._b(j, self._x_train[k][t]) * beta[t, j]
+
+                xi[t] *= 1 / np.sum(xi[t])
+
+        seq_likelihood = np.sum(alpha[-1])
+
+        return seq_likelihood, gamma, xi
 
 
 class ConstrainedHiddenMarkovModel(HiddenMarkovModel):
-    """Constrained hidden markov model class
+    """Constrained hidden Markov model class
 
     Model in which the hidden process is constrained to end in the last hidden state
 
@@ -134,7 +246,7 @@ class ConstrainedHiddenMarkovModel(HiddenMarkovModel):
 
         super(ConstrainedHiddenMarkovModel, self).__init__(a, b, pi)
 
-    def update_candidates(self, t):
+    def _update_candidates(self, t):
         end_state = self._num_hidden_states - 1
         v_end_state = self._v[t, end_state]
         s_end_state = self._s[t][end_state]

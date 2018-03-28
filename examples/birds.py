@@ -11,21 +11,13 @@ from evdetect.utils import import_annotations, export_subsequences
 
 
 def birds():
-    filename_filtered = '../examples/data/birds_filtered.wav'
     filename_annotations = '../examples/data/birds.lab'
-    filename = '../examples/data/birds.wav'
+    filename_audio = '../examples/data/birds.wav'
 
-    # opening of the original .wav file
-    y, fs = librosa.load(filename)
+    # opening of the .wav file
+    y, fs = librosa.load(filename_audio)
     spectrum = np.abs(librosa.stft(y))
     x = spectrum.transpose()
-
-    # opening of the filtered .wav file (used for estimating reference spectra)
-    y_filtered, fs_filtered = librosa.load(filename_filtered)
-    spectrum_filtered = np.abs(librosa.stft(y_filtered))
-    x_filtered = spectrum_filtered.transpose()
-
-    assert(fs == fs_filtered)
 
     hop_length = 2048 // 4
 
@@ -36,7 +28,7 @@ def birds():
     cui_specs2 = []
 
     for i in range(len(annotations) - 1):
-        spec = x_filtered[int(annotations[i] * fs / hop_length):int(annotations[i + 1] * fs / hop_length)]
+        spec = x[int(annotations[i] * fs / hop_length):int(annotations[i + 1] * fs / hop_length)]
         if i % 2 == 0:
             cui_specs1.append(spec.mean(axis=0))
         else:
@@ -56,7 +48,7 @@ def birds():
     model = MarkovPitchSequenceModel(a, pi, np.array([cui_spec1, cui_spec2]), scaling_factor)
 
     # detection of the event's occurrences
-    epsilon = 0.05
+    epsilon = 0.3
     delta = 1
 
     reported_subsequences = model.detect_event(x, epsilon, delta)

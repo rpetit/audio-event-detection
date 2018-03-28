@@ -1,16 +1,12 @@
+"""
+Base class for event models
+"""
+
 from abc import abstractmethod
 
 
 class EventModel:
     """Abstract event model class"""
-
-    def __init__(self):
-        self._x = None
-        self._epsilon = None
-        self._delta = None
-        self._num_time_steps = None
-        self._candidates = None
-        self._reported_subsequences = None
 
     def detect_event(self, x, epsilon, delta):
         """Detection interface
@@ -30,9 +26,10 @@ class EventModel:
             List of reported subsequences
 
         """
+        assert(x.ndim == 2)
+
         self._init_detection(x, epsilon, delta)
         reported_subsequences = self._perform_detection()
-        self._end_detection()
 
         return reported_subsequences
 
@@ -55,36 +52,6 @@ class EventModel:
         self._num_time_steps = self._x.shape[0]
         self._candidates = set([])
         self._reported_subsequences = []
-
-    def _end_detection(self):
-        """Ends the detection"""
-        self._x = None
-        self._epsilon = None
-        self._delta = None
-        self._num_time_steps = None
-        self._candidates = None
-        self._reported_subsequences = None
-
-    def _report_subsequences(self, t):
-        """Report all the subsequences that should be reported at a given time
-
-        Parameters
-        ----------
-        t : int
-            Current time index
-
-        """
-        for c in set(self._candidates):
-            if self._should_report(c, t):
-                length = c[2][0] - c[1][0] + 1
-                likelihood = c[0] * self._epsilon ** length
-
-                print('\n' + "Likelihood: {}".format(likelihood))
-                print("Starting position: {} (in state {})".format(c[1][0], c[1][1]))
-                print("End position: {} (in state {})".format(c[2][0], c[2][1]))
-
-                self._reported_subsequences.append(c)
-                self._candidates.remove(c)
 
     @abstractmethod
     def _perform_detection(self):
@@ -115,3 +82,24 @@ class EventModel:
 
         """
         pass
+
+    def _report_subsequences(self, t):
+        """Report all the subsequences that should be reported at a given time
+
+        Parameters
+        ----------
+        t : int
+            Current time index
+
+        """
+        for c in set(self._candidates):
+            if self._should_report(c, t):
+                length = c[2][0] - c[1][0] + 1
+                likelihood = c[0] * self._epsilon ** length
+
+                print('\n' + "Likelihood: {}".format(likelihood))
+                print("Starting position: {} (in state {})".format(c[1][0], c[1][1]))
+                print("End position: {} (in state {})".format(c[2][0], c[2][1]))
+
+                self._reported_subsequences.append(c)
+                self._candidates.remove(c)
