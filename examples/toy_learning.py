@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import norm
 
-from evdetect.hidden_markov_models import HiddenMarkovModel
+from evdetect.hmm import HiddenMarkovModel
 
 
 a = np.array([[0.1, 0.8, 0.1], [0.3, 0.4, 0.3], [0.9, 0, 0.1]])
@@ -23,5 +23,5 @@ x_train = [x_train1, x_train2]
 
 model.learn_parameters(x_train, 1000)
 
-print(model._a)
-print(model._pi)
+print(model.a)
+print(model.pi)

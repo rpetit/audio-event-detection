@@ -6,7 +6,7 @@ import numpy as np
 
 import librosa
 
-from evdetect.hidden_markov_models import ConstrainedMarkovPitchSequenceModel
+from evdetect.hmm import ConstrainedMarkovPitchSequenceModel
 from evdetect.utils import generate_spectrum, export_subsequences
 
 

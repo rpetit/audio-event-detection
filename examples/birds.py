@@ -6,7 +6,7 @@ import numpy as np
 
 import librosa
 
-from evdetect.hidden_markov_models import MarkovPitchSequenceModel
+from evdetect.hmm import MarkovPitchSequenceModel
 from evdetect.utils import import_annotations, export_subsequences
 
 
