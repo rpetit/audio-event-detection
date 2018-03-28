@@ -1,5 +1,5 @@
 # Event detection
-Work conducted during an internship at IRCAM. <br/>
+Work conducted during an internship at IRCAM. <br/> <br/>
 ![alt text](https://github.com/RomainPe/audio-event-detection/blob/master/ircam.png "IRCAM logo")
 # References
 [1] A. Bietti, online learning for audio clustering and segmentation, Master thesis, 2014 <br/>
