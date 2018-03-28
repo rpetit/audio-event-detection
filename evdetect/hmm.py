@@ -12,11 +12,11 @@ class HiddenMarkovModel:
     ----------
     a : ndarray, shape (n_states, n_states)
         Transition probabilities
-    b : function, parameters (int, ndarray)
-        Emission density functions
+    mu : ndarray, shape (n_states, n_freq_bins)
+        Emission distributions parameters
     pi : ndarray, shape (n_states,)
         Initial probabilities
-    end_states : string
+    end_state : string
         Possible hidden end states, must be either 'all' or 'last'
 
     Returns
@@ -26,16 +26,34 @@ class HiddenMarkovModel:
 
     """
 
-    def __init__(self, a, b, pi, end_states='all'):
-        assert(a.ndim == 2 and pi.ndim == 1 and a.shape[0] == a.shape[1] == pi.size)
+    def __init__(self, a, mu, pi, end_state='all'):
+        assert(a.ndim == 2 and mu.ndim == 2 and pi.ndim == 1 and a.shape[0] == a.shape[1] == mu.shape[0] == pi.size)
         self.a = a
-        self.b = b
+        self.mu = mu
         self.pi = pi
 
         self.n_states = self.pi.size
 
-        assert(end_states == 'all' or end_states == 'last')
-        self.end_states = end_states
+        assert(end_state == 'all' or end_state == 'last')
+        self.end_state = end_state
+
+    def b(self, i, spec):
+        """Emission density functions
+        
+        Parameters
+        ----------
+        i : int
+            Index of the considered hidden state
+        spec : ndarray, shape (n_freq_bins,) 
+
+        Returns
+        -------
+        float
+            Value of the emission density function associated with hidden state i at spec
+
+        """
+        normalized_spec = spec / np.sum(spec)
+        return ((normalized_spec / self.mu[i]) ** self.mu[i]).prod()
 
     def detect_event(self, x, epsilon, delta):
         n_steps = x.shape[0]
@@ -66,7 +84,7 @@ class HiddenMarkovModel:
                         s[t][i] = s[t - 1][best_j]
                         v[t, i] = v2
 
-                if self.end_states == 'all' or i == self.n_states - 1:
+                if self.end_state == 'all' or i == self.n_states - 1:
                     if v[t, i] >= 1 / epsilon ** delta:  # likelihood threshold
                         # if the starting position is not shared with another candidate, i.e. Viterbi paths do not cross
                         if s[t][i] not in set([c[1] for c in candidates]):
@@ -159,6 +177,7 @@ class HiddenMarkovModel:
         gamma = np.zeros((n_steps, self.n_states))
         xi = np.zeros((n_steps, self.n_states, self.n_states))
 
+        # forward variable recursion
         for t in range(n_steps):
             for i in range(self.n_states):
                 if t == 0:
@@ -166,6 +185,7 @@ class HiddenMarkovModel:
                 else:
                     alpha[t, i] = np.sum(alpha[t - 1] * self.a[:, i] * self.b(i, x[t]))
 
+        # backward variable recursion
         for t in reversed(range(n_steps)):
             for i in range(self.n_states):
                 if t == n_steps - 1:
@@ -195,14 +215,14 @@ class ConstrainedHiddenMarkovModel(HiddenMarkovModel):
 
     Parameters
     ----------
-    n_states : int
-        Number of hidden states
-    b : function, parameters (int, ndarray)
-        Emission density functions
+    mu : ndarray, shape (n_states, n_freq_bins)
+        Emission distributions parameters
 
     """
 
-    def __init__(self, n_states, b):
+    def __init__(self, mu):
+        n_states = mu.shape[0]
+        
         a = np.zeros((n_states, n_states))
 
         for i in range(n_states - 1):
@@ -213,52 +233,4 @@ class ConstrainedHiddenMarkovModel(HiddenMarkovModel):
 
         pi = np.array([1] + [0] * (n_states - 1))
 
-        super(ConstrainedHiddenMarkovModel, self).__init__(a, b, pi, end_states='last')
-
-
-class MarkovPitchSequenceModel(HiddenMarkovModel):
-    """Markov pitch sequence model class
-
-    Each hidden state represents a pitch within the sequence
-
-    Parameters
-    ----------
-    a : ndarray, shape (n_states, n_states)
-        Transition probabilities
-    pitch_specs : ndarray, shape (n_states, num_freq_bins)
-        Reference spectrum for each of the sequence's pitches
-    beta : float
-        Scaling factor used in the emission density functions
-
-    """
-
-    def __init__(self, a, pi, pitch_specs, beta):
-
-        def b(i, spec):  # Dirichlet distribution
-            normalized_spec = spec / np.sum(spec)
-            return np.exp(- beta * (pitch_specs[i] * np.log(pitch_specs[i] / normalized_spec)).sum())
-
-        super(MarkovPitchSequenceModel, self).__init__(a, b, pi)
-
-
-class ConstrainedMarkovPitchSequenceModel(ConstrainedHiddenMarkovModel):
-    """Constrained Markov pitch sequence model class
-
-    Parameters
-    ----------
-    pitch_specs : ndarray, shape (n_states, num_freq_bins)
-        Reference spectrum for each of the sequence's pitches
-    beta : float
-        Scaling factor used in the emission density functions
-
-    """
-
-    def __init__(self, pitch_specs, beta):
-
-        n_states = pitch_specs.shape[0]
-
-        def b(i, spec):  # Dirichlet distribution
-            normalized_spec = spec / np.sum(spec)
-            return np.exp(- beta * (pitch_specs[i] * np.log(pitch_specs[i] / normalized_spec)).sum())
-
-        super(ConstrainedMarkovPitchSequenceModel, self).__init__(n_states, b)
+        super(ConstrainedHiddenMarkovModel, self).__init__(a, mu, pi, end_state='last')

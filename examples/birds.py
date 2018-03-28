@@ -6,7 +6,7 @@ import numpy as np
 
 import librosa
 
-from evdetect.hmm import MarkovPitchSequenceModel
+from evdetect.hmm import HiddenMarkovModel
 from evdetect.utils import import_annotations, export_subsequences
 
 
@@ -40,15 +40,14 @@ def birds():
     cui_spec2 = np.array(cui_specs2).mean(axis=0)
     cui_spec2 = cui_spec2 / np.sum(cui_spec2)
 
-    # instantiation of the Markov pitch sequence model
+    # instantiation of the hidden Markov model
     a = np.array([[0.5, 0.5], [0.5, 0.5]])
     pi = np.array([1, 0])
-    scaling_factor = 1.4
 
-    model = MarkovPitchSequenceModel(a, pi, np.array([cui_spec1, cui_spec2]), scaling_factor)
+    model = HiddenMarkovModel(a, np.array([cui_spec1, cui_spec2]), pi)
 
     # detection of the event's occurrences
-    epsilon = 0.3
+    epsilon = 0.35
     delta = 1
 
     reported_subsequences = model.detect_event(x, epsilon, delta)
