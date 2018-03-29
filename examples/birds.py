@@ -3,13 +3,12 @@ Detection of a bird's song in a noisy sound stage
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import librosa
 import librosa.display
 
 from evdetect.hmm import HiddenMarkovModel
-from evdetect.utils import import_annotations, export_subsequences
+from evdetect.utils import import_annotations, display_detection_result
 
 
 def birds():
@@ -25,8 +24,6 @@ def birds():
 
     # importation of the annotations
     annotations = import_annotations(filename_annotations)
-
-    D = librosa.amplitude_to_db(librosa.stft(y), ref=np.max)
 
     # instantiation of the hidden Markov model
     a = np.array([[0.5, 0.5], [0.5, 0.5]])
@@ -47,8 +44,8 @@ def birds():
 
     reported_subsequences = model.detect_event(x, epsilon, delta)
 
-    # exportation of the reported subsequences
-    export_subsequences(reported_subsequences, fs, hop_length, '../examples/results/birds.lab')
+    # detection result's display
+    display_detection_result(y, reported_subsequences, fs, hop_length)
 
 
 birds()

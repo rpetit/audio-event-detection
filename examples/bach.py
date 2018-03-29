@@ -7,7 +7,7 @@ import numpy as np
 import librosa
 
 from evdetect.hmm import ConstrainedHiddenMarkovModel
-from evdetect.utils import generate_spectrum, export_subsequences
+from evdetect.utils import generate_spectrum, display_detection_result
 
 
 def pitch_sequence_detection():
@@ -37,13 +37,13 @@ def pitch_sequence_detection():
     model = ConstrainedHiddenMarkovModel(np.array([g4_spec, c5_spec]))
 
     # detection of the event's occurrences
-    epsilon = 0.15
+    epsilon = 0.55
     delta = 1
 
     reported_subsequences = model.detect_event(x, epsilon, delta)
 
-    # exportation of the reported subsequences
-    export_subsequences(reported_subsequences, fs, hop_length, '../examples/results/pitch_sequence.lab')
+    # detection result's display
+    display_detection_result(y, reported_subsequences, fs, hop_length)
 
 
 pitch_sequence_detection()

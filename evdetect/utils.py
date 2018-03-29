@@ -3,9 +3,14 @@ Utility functions
 """
 
 import numpy as np
-
 from scipy import signal
 from scipy.fftpack import fft, fftshift
+
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+
+import librosa
+import librosa.display
 
 
 def generate_spectrum(f0, fs, a0, b, n_window, n_fft):
@@ -58,27 +63,35 @@ def generate_spectrum(f0, fs, a0, b, n_window, n_fft):
     return output_spec / np.sum(output_spec)
 
 
-def export_subsequences(subsequences, fs, hop_length, export_path):
-    """Export reported subsequences for visualization in AudioSculpt
+def display_detection_result(y, subsequences, fs, hop_length):
+    """Detection result's display
 
     Parameters
     ----------
+    y : ndarray, shape (n_steps,)
+        The input audio stream
     subsequences : list
         List of reported subsequences
     fs : int
         Sampling frequency
     hop_length : int
         Number of frames between STFT columns
-    export_path : string
-        Path where to export the reported subsequences
 
     """
-    with open(export_path, 'w') as f:
-        for i in range(len(subsequences)):
-            start_time = subsequences[i][1][0] * hop_length / fs
-            end_time = subsequences[i][2][0] * hop_length / fs
-            f.write("{:.6f} {:.6f} subsequence{:d}\n".format(start_time, start_time, i + 1))
-            f.write("{:.6f} {:.6f} subsequence{:d}\n".format(end_time, end_time, i + 1))
+    plt.figure(figsize=(15, 5))
+
+    d = librosa.amplitude_to_db(np.abs(librosa.stft(y)), ref=np.max)
+    librosa.display.specshow(d, y_axis='linear', x_axis='time')
+
+    for subsequence in subsequences:
+        t_start = subsequence[1][0] * hop_length / fs
+        t_end = subsequence[2][0] * hop_length / fs
+        plt.axvspan(t_start, t_end, facecolor='white', alpha=0.5)
+
+    plt.colorbar(format='%+2.0f dB')
+    plt.title('Linear-frequency power spectrogram')
+
+    plt.show()
 
 
 def import_annotations(file_path):
