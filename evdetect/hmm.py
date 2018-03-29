@@ -12,12 +12,16 @@ class HiddenMarkovModel:
     ----------
     a : ndarray, shape (n_states, n_states)
         Transition probabilities
-    mu : ndarray, shape (n_states, n_freq_bins)
-        Emission distributions parameters
     pi : ndarray, shape (n_states,)
         Initial probabilities
+    mu : ndarray, shape (n_states, n_freq_bins)
+        Emission distributions parameters
+    scaling : float
+        Scaling factor used in emission density functions
     end_state : string
         Possible hidden end states, must be either 'all' or 'last'
+    min_float : float
+        Minimum float value used to avoid 0 values in log computations
 
     Returns
     -------
@@ -26,19 +30,23 @@ class HiddenMarkovModel:
 
     """
 
-    def __init__(self, a, mu, pi, end_state='all'):
+    def __init__(self, a, pi, mu, scaling=1.0, end_state='all', min_float=1e-50):
         assert(a.ndim == 2 and mu.ndim == 2 and pi.ndim == 1 and a.shape[0] == a.shape[1] == mu.shape[0] == pi.size)
         self.a = a
-        self.mu = mu
         self.pi = pi
+        self.mu = mu
+        self.scaling = scaling
+
+        self.log_a = np.log(self.a + min_float)
+        self.log_pi = np.log(self.pi + min_float)
 
         self.n_states = self.pi.size
 
         assert(end_state == 'all' or end_state == 'last')
         self.end_state = end_state
 
-    def b(self, i, spec):
-        """Emission density functions
+    def log_b(self, i, spec):
+        """Emission log density functions
         
         Parameters
         ----------
@@ -49,16 +57,52 @@ class HiddenMarkovModel:
         Returns
         -------
         float
-            Value of the emission density function associated with hidden state i at spec
-
+            Value (up to an additive constant) of the emission log density function associated with hidden state i
+            evaluated at spec
         """
         normalized_spec = spec / np.sum(spec)
-        return ((normalized_spec / self.mu[i]) ** self.mu[i]).prod()
+        return - self.scaling * np.sum(self.mu[i] * np.log(self.mu[i] / normalized_spec))
+
+    def b(self, i, spec):
+        """Emission density functions
+
+        Parameters
+        ----------
+        i : int
+            Index of the considered hidden state
+        spec : ndarray, shape (n_freq_bins,)
+
+        Returns
+        -------
+        float
+            Value (up to a multiplicative constant) of the emission log density function associated with hidden state i
+             evaluated at spec
+        """
+        normalized_spec = spec / np.sum(spec)
+        return np.exp(- self.scaling * np.sum(self.mu[i] * np.log(self.mu[i] / normalized_spec)))
 
     def detect_event(self, x, epsilon, delta):
-        n_steps = x.shape[0]
+        """Event detection interface
         
-        v = np.zeros((n_steps, self.n_states))
+        Parameters
+        ----------
+        x : ndarray, shape (n_steps, n_freq_bins)
+            Input audio stream
+        epsilon : float
+            Likelihood threshold
+        delta : float
+            Minimum subsequence length
+
+        Returns
+        -------
+        list
+            List of reported subsequences
+
+        """
+        n_steps = x.shape[0]
+        log_e = np.log(epsilon)
+        
+        log_v = np.zeros((n_steps, self.n_states))
         s = [[(-1, -1) for _ in range(self.n_states)] for _ in range(n_steps)]
         
         candidates = set([])
@@ -67,41 +111,41 @@ class HiddenMarkovModel:
         for t in range(n_steps):
             for i in range(self.n_states):
                 if t == 0:
-                    v[t, i] = self.pi[i] * self.b(i, x[t]) / epsilon
+                    log_v[t, i] = self.log_pi[i] + self.log_b(i, x[t]) - log_e
                     s[t][i] = (t, i)
                 else:
-                    # likelihood for starting the subsequence in (t, i)
-                    v1 = self.pi[i] * self.b(i, x[t]) / epsilon
+                    # log likelihood for starting the subsequence in (t, i)
+                    log_v1 = self.log_pi[i] + self.log_b(i, x[t]) - log_e
 
-                    # likelihood for starting the subsequence before t
-                    best_j = np.argmax(v[t - 1] * self.a[:, i])
-                    v2 = v[t - 1][best_j] * self.a[best_j, i] * self.b(i, x[t]) / epsilon
+                    # log likelihood for starting the subsequence before t
+                    best_j = np.argmax(log_v[t - 1] + self.log_a[:, i])
+                    log_v2 = log_v[t - 1][best_j] + self.log_a[best_j, i] + self.log_b(i, x[t]) - log_e
 
-                    if v1 > v2:
+                    if log_v1 > log_v2:
                         s[t][i] = (t, i)
-                        v[t, i] = v1
+                        log_v[t, i] = log_v1
                     else:
                         s[t][i] = s[t - 1][best_j]
-                        v[t, i] = v2
+                        log_v[t, i] = log_v2
 
                 if self.end_state == 'all' or i == self.n_states - 1:
-                    if v[t, i] >= 1 / epsilon ** delta:  # likelihood threshold
+                    if log_v[t, i] >= - delta * log_e:  # log likelihood threshold
                         # if the starting position is not shared with another candidate, i.e. Viterbi paths do not cross
                         if s[t][i] not in set([c[1] for c in candidates]):
-                            candidates.add((v[t, i], s[t][i], (t, i)))
+                            candidates.add((log_v[t, i], s[t][i], (t, i)))
                         else:
                             for c in set(candidates):
-                                # otherwise, keep the one with highest likelihood
-                                if s[t][i] == c[1] and v[t, i] >= c[0]:
+                                # otherwise, keep the one with highest log likelihood
+                                if s[t][i] == c[1] and log_v[t, i] >= c[0]:
                                     candidates.remove(c)
-                                    candidates.add((v[t, i], s[t][i], (t, i)))
+                                    candidates.add((log_v[t, i], s[t][i], (t, i)))
                 
             for c in set(candidates):
                 if c[1] not in set([s[t][i] for i in range(self.n_states)]) or t == n_steps - 1:
                     length = c[2][0] - c[1][0] + 1
-                    likelihood = c[0] * epsilon ** length
+                    log_likelihood = c[0] + length * log_e
 
-                    print('\n' + "Likelihood: {}".format(likelihood))
+                    print('\n' + "Log likelihood: {}".format(log_likelihood))
                     print("Starting position: {} (in state {})".format(c[1][0], c[1][1]))
                     print("End position: {} (in state {})".format(c[2][0], c[2][1]))
 
@@ -125,37 +169,43 @@ class HiddenMarkovModel:
         
         for _ in range(n_iter):
 
-            seq_likelihoods = []
+            likelihoods = []
             gamma = []
             xi = []
 
             # E step
             for k in range(num_train_seq):
-                seq_likelihood, gamma_k, xi_k = self._forward_backward(x_train[k])
+                seq_likelihood, seq_gamma, seq_xi = self._forward_backward(x_train[k])
 
-                seq_likelihoods.append(seq_likelihood)
-                gamma.append(gamma_k)
-                xi.append(xi_k)
+                likelihoods.append(seq_likelihood)
+                gamma.append(seq_gamma)
+                xi.append(seq_xi)
 
             # M step
-            # TODO: deal with emission parameters
             new_a = np.zeros_like(self.a)
             new_mu = np.zeros_like(self.mu)
             new_pi = np.zeros_like(self.pi)
 
-            for i in range(self.n_states):
-                for j in range(self.n_states):
-                    for k in range(num_train_seq):
-                        new_a[i, j] += 1 / seq_likelihoods[k] * np.sum(xi[k][1:, i, j])
-
-                new_a[i] *= 1 / np.sum(new_a[i])
+            new_mu_norm = np.zeros(self.n_states)
 
             for k in range(num_train_seq):
-                new_mu += 1 / seq_likelihood * np.sum(gamma[k] * x_train[k])
-                new_pi += 1 / seq_likelihoods[k] * gamma[k][0]
+                new_a += np.sum(xi[k] / likelihoods[k], axis=0)
+                new_pi += gamma[k][0] / likelihoods[k]
+
+                for i in range(self.n_states):
+                    for t in range(x_train[k].shape[0]):
+                        new_mu[i] += gamma[k][t, i] * (x_train[k][t] / np.sum(x_train[k][t])) / likelihoods[k]
+
+                    new_mu_norm[i] += np.sum(gamma[k][:, i]) / likelihoods[k]
+
             new_pi *= 1 / np.sum(new_pi)
 
+            for i in range(self.n_states):
+                new_a[i] *= 1 / np.sum(new_a[i])
+                new_mu[i] *= 1 / new_mu_norm[i]
+
             self.a = new_a
+            self.mu = new_mu
             self.pi = new_pi
 
     def _forward_backward(self, x):
@@ -212,19 +262,21 @@ class HiddenMarkovModel:
 class ConstrainedHiddenMarkovModel(HiddenMarkovModel):
     """Constrained hidden Markov model class
 
-    Model in which the hidden process is constrained TODO: add details
+    Model in which the hidden process is constrained
 
     Parameters
     ----------
     mu : ndarray, shape (n_states, n_freq_bins)
         Emission distributions parameters
+    scaling : float
+        Scaling factor used in emission density functions
 
     """
 
-    def __init__(self, mu):
+    def __init__(self, mu, scaling=1):
         n_states = mu.shape[0]
         
-        a = np.zeros((n_states, n_states))
+        a = np.zeros((n_states, n_states)) + 1e-12
 
         for i in range(n_states - 1):
             a[i, i] = 0.5
@@ -232,6 +284,6 @@ class ConstrainedHiddenMarkovModel(HiddenMarkovModel):
 
         a[n_states - 1][n_states - 1] = 1
 
-        pi = np.array([1] + [0] * (n_states - 1))
+        pi = np.array([1] + [1e-12] * (n_states - 1))
 
-        super(ConstrainedHiddenMarkovModel, self).__init__(a, mu, pi, end_state='last')
+        super(ConstrainedHiddenMarkovModel, self).__init__(a, pi, mu, scaling=scaling, end_state='last')

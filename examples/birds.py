@@ -42,9 +42,12 @@ def birds():
 
     # instantiation of the hidden Markov model
     a = np.array([[0.5, 0.5], [0.5, 0.5]])
-    pi = np.array([1, 0])
+    pi = np.array([1.0, 0.0])
 
-    model = HiddenMarkovModel(a, np.array([cui_spec1, cui_spec2]), pi)
+    model = HiddenMarkovModel(a, pi, np.array([cui_spec1, cui_spec2]))
+
+    seq = [x[int(annotations[0] * fs / hop_length):int(annotations[-1] * fs / hop_length)]]
+    model.learn_parameters(seq, 1)
 
     # detection of the event's occurrences
     epsilon = 0.35
