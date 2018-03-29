@@ -21,33 +21,21 @@ def birds():
 
     hop_length = 2048 // 4
 
-    # importation of the annotations and estimation of the reference spectra
+    # importation of the annotations
     annotations = import_annotations(filename_annotations)
-
-    cui_specs1 = []
-    cui_specs2 = []
-
-    for i in range(len(annotations) - 1):
-        spec = x[int(annotations[i] * fs / hop_length):int(annotations[i + 1] * fs / hop_length)]
-        if i % 2 == 0:
-            cui_specs1.append(spec.mean(axis=0))
-        else:
-            cui_specs2.append(spec.mean(axis=0))
-
-    # normalization of the reference spectra
-    cui_spec1 = np.array(cui_specs1).mean(axis=0)
-    cui_spec1 = cui_spec1 / np.sum(cui_spec1)
-    cui_spec2 = np.array(cui_specs2).mean(axis=0)
-    cui_spec2 = cui_spec2 / np.sum(cui_spec2)
 
     # instantiation of the hidden Markov model
     a = np.array([[0.5, 0.5], [0.5, 0.5]])
     pi = np.array([1.0, 0.0])
+    cui_spec1 = np.random.random(x.shape[1])
+    cui_spec2 = np.random.rand(x.shape[1])
 
     model = HiddenMarkovModel(a, pi, np.array([cui_spec1, cui_spec2]))
 
-    seq = [x[int(annotations[0] * fs / hop_length):int(annotations[-1] * fs / hop_length)]]
-    model.learn_parameters(seq, 1)
+    # parameters learning
+    x_train = [x[int(annotations[0] * fs / hop_length):int(annotations[-1] * fs / hop_length)]]
+    n_iter = 1
+    model.learn_parameters(x_train, n_iter)
 
     # detection of the event's occurrences
     epsilon = 0.35

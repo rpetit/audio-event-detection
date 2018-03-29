@@ -34,7 +34,7 @@ class HiddenMarkovModel:
         assert(a.ndim == 2 and mu.ndim == 2 and pi.ndim == 1 and a.shape[0] == a.shape[1] == mu.shape[0] == pi.size)
         self.a = a
         self.pi = pi
-        self.mu = mu
+        self.mu = mu / np.sum(mu)
         self.scaling = scaling
 
         self.log_a = np.log(self.a + min_float)
@@ -194,7 +194,8 @@ class HiddenMarkovModel:
 
                 for i in range(self.n_states):
                     for t in range(x_train[k].shape[0]):
-                        new_mu[i] += gamma[k][t, i] * (x_train[k][t] / np.sum(x_train[k][t])) / likelihoods[k]
+                        normalized_frame = x_train[k][t] / np.sum(x_train[k][t])
+                        new_mu[i] += gamma[k][t, i] / likelihoods[k] * normalized_frame
 
                     new_mu_norm[i] += np.sum(gamma[k][:, i]) / likelihoods[k]
 
