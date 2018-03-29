@@ -1,6 +1,8 @@
 # Audio event detection
 Work conducted as an intern at IRCAM. <br/> <br/>
-![alt text](https://github.com/RomainPe/audio-event-detection/blob/master/ircam.png "IRCAM logo")
+<div align="center">
+  <img src="http://www2.atiam.ircam.fr/wp-content/uploads/2011/07/logoircam.jpg" width="50%"><br><br>
+</div>
 
 ## `pip` installation 
 Run the following command :

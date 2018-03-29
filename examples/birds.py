@@ -3,8 +3,10 @@ Detection of a bird's song in a noisy sound stage
 """
 
 import numpy as np
+import matplotlib.pyplot as plt
 
 import librosa
+import librosa.display
 
 from evdetect.hmm import HiddenMarkovModel
 from evdetect.utils import import_annotations, export_subsequences
@@ -23,6 +25,8 @@ def birds():
 
     # importation of the annotations
     annotations = import_annotations(filename_annotations)
+
+    D = librosa.amplitude_to_db(librosa.stft(y), ref=np.max)
 
     # instantiation of the hidden Markov model
     a = np.array([[0.5, 0.5], [0.5, 0.5]])
