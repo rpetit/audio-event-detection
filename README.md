@@ -6,7 +6,7 @@ Work conducted as an intern at IRCAM. <br/> <br/>
 Run the following command :
 
 ```
-pip install -e git+https://github.com/romainpe/audio-event-detection#egg=audio-event-detection
+pip install -e git+https://github.com/romainpe/audio-event-detection#egg=evdetect
 ```
 
 ## References
