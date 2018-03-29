@@ -1,7 +1,7 @@
 # Audio event detection
 Work conducted as an intern at IRCAM. <br/> <br/>
-<div align="center">
-  <img src="http://www2.atiam.ircam.fr/wp-content/uploads/2011/07/logoircam.jpg" width="50%"><br><br>
+<div align="left">
+  <img src="http://www2.atiam.ircam.fr/wp-content/uploads/2011/07/logoircam.jpg" width="20%"><br><br>
 </div>
 
 ## `pip` installation 
