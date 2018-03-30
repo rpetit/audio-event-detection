@@ -11,6 +11,12 @@ Run the following command :
 pip install -e git+https://github.com/romainpe/audio-event-detection#egg=evdetect
 ```
 
+## Example
+
+Detection of a bird's song with a hidden Markov model.
+
+![bird](bird.png)
+
 ## References
 [1] A. Bietti, online learning for audio clustering and segmentation Master thesis, 2014 <br/><br/>
 [2] A. Cont, a coupled duration-focused architecture for realtime music to score alignment, IEEE Transactions on Pattern 

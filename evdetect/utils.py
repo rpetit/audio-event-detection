@@ -7,7 +7,6 @@ from scipy import signal
 from scipy.fftpack import fft, fftshift
 
 import matplotlib.pyplot as plt
-import matplotlib.patches as mpatches
 
 import librosa
 import librosa.display
@@ -92,6 +91,33 @@ def display_detection_result(y, subsequences, fs, hop_length):
     plt.title('Linear-frequency power spectrogram')
 
     plt.show()
+
+
+def detection_filter(y, subsequences, fs, hop_length, output_path):
+    """Filter the input audio file according to detection results
+
+    Parameters
+    ----------
+    y : ndarray, shape (n_steps,)
+        The input audio stream
+    subsequences : list
+        List of reported subsequences
+    fs : int
+        Sampling frequency
+    hop_length : int
+        Number of frames between STFT columns
+    output_path : string
+        Path for the output file
+
+    """
+    output_y = np.copy(y) * 0.1
+
+    for subsequence in subsequences:
+        t_start = subsequence[1][0] * hop_length
+        t_end = subsequence[2][0] * hop_length
+        output_y[t_start:t_end] = 2 * y[t_start:t_end]
+
+        librosa.output.write_wav(output_path, output_y, fs)
 
 
 def import_annotations(file_path):

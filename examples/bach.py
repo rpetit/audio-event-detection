@@ -7,7 +7,7 @@ import numpy as np
 import librosa
 
 from evdetect.hmm import ConstrainedHiddenMarkovModel
-from evdetect.utils import generate_spectrum, display_detection_result
+from evdetect.utils import generate_spectrum, display_detection_result, detection_filter
 
 
 def pitch_sequence_detection():
@@ -42,8 +42,9 @@ def pitch_sequence_detection():
 
     reported_subsequences = model.detect_event(x, epsilon, delta)
 
-    # detection result's display
+    # detection results
     display_detection_result(y, reported_subsequences, fs, hop_length)
+    detection_filter(y, reported_subsequences, fs, hop_length, 'results/bach_filtered.wav')
 
 
 pitch_sequence_detection()

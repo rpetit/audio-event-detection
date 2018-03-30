@@ -8,7 +8,7 @@ import librosa
 import librosa.display
 
 from evdetect.hmm import HiddenMarkovModel
-from evdetect.utils import import_annotations, display_detection_result
+from evdetect.utils import import_annotations, display_detection_result, detection_filter
 
 
 def birds():
@@ -44,8 +44,9 @@ def birds():
 
     reported_subsequences = model.detect_event(x, epsilon, delta)
 
-    # detection result's display
+    # detection results
     display_detection_result(y, reported_subsequences, fs, hop_length)
+    detection_filter(y, reported_subsequences, fs, hop_length, 'results/birds_filtered.wav')
 
 
 birds()
