@@ -93,6 +93,7 @@ def display_detection_result(y, subsequences, fs, hop_length):
     plt.show()
 
 
+# TODO: deal with output path
 def detection_filter(y, subsequences, fs, hop_length, output_path):
     """Filter the input audio file according to detection results
 
@@ -107,7 +108,7 @@ def detection_filter(y, subsequences, fs, hop_length, output_path):
     hop_length : int
         Number of frames between STFT columns
     output_path : string
-        Path for the output file
+        Path to save the output .wav file
 
     """
     output_y = np.copy(y) * 0.1

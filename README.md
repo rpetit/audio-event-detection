@@ -13,9 +13,14 @@ pip install -e git+https://github.com/romainpe/audio-event-detection#egg=evdetec
 
 ## Example
 
-Detection of a bird's song with a hidden Markov model.
+Detection of a bird's song with a hidden Markov model. <br/>
+
+From the examples directory, run birds.py to get the following output :
 
 ![bird](bird.png)
+
+This will also output a .wav file in examples/results where the loudness have been increased in
+segments matching the event model
 
 ## References
 [1] A. Bietti, online learning for audio clustering and segmentation Master thesis, 2014 <br/><br/>

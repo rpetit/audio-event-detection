@@ -2,6 +2,8 @@
 Detection of the G4-C5 sequence in a Bach piano piece
 """
 
+import os
+
 import numpy as np
 
 import librosa
@@ -44,6 +46,10 @@ def pitch_sequence_detection():
 
     # detection results
     display_detection_result(y, reported_subsequences, fs, hop_length)
+
+    if not(os.path.exists('results')):
+        os.makedirs('results')
+
     detection_filter(y, reported_subsequences, fs, hop_length, 'results/bach_filtered.wav')
 
 

@@ -2,6 +2,8 @@
 Detection of a bird's song in a noisy sound stage
 """
 
+import os
+
 import numpy as np
 
 import librosa
@@ -46,7 +48,11 @@ def birds():
 
     # detection results
     display_detection_result(y, reported_subsequences, fs, hop_length)
-    detection_filter(y, reported_subsequences, fs, hop_length, 'results/birds_filtered.wav')
+
+    if not (os.path.exists('results')):
+        os.makedirs('results')
+
+    detection_filter(y, reported_subsequences, fs, hop_length, 'results/bird_filtered.wav')
 
 
 birds()
