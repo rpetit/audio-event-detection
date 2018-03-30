@@ -15,7 +15,7 @@ class HiddenMarkovModel:
     pi : ndarray, shape (n_states,)
         Initial probabilities
     mu : ndarray, shape (n_states, n_freq_bins)
-        Emission distributions parameters
+        Emission distributions parameters (Dirichlet)
     scaling : float
         Scaling factor used in emission density functions
     end_state : string
