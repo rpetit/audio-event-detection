@@ -243,32 +243,3 @@ class HiddenSemiMarkovModel(HiddenMarkovModel):
 
         """
         pass
-
-
-class ConstrainedHiddenSemiMarkovModel(HiddenSemiMarkovModel):
-    """Constrained hidden semi-Markov model class
-
-    Model in which the hidden process is constrained
-
-    Parameters
-    ----------
-    mu : ndarray, shape (n_states, n_freq_bins)
-        Emission distributions parameters
-    nu : ndarray, shape (n_states,)
-        Duration distributions parameters
-    scaling : float
-        Scaling factor used in emission density functions
-
-    """
-
-    def __init__(self, mu, nu, scaling=1):
-        n_states = mu.shape[0]
-
-        a = np.zeros((n_states, n_states)) + 1e-12
-
-        for i in range(n_states - 1):
-            a[i, i + 1] = 1
-
-        pi = np.array([1] + [1e-12] * (n_states - 1))
-
-        super(ConstrainedHiddenSemiMarkovModel, self).__init__(a, pi, mu, nu, scaling=scaling, end_state='last')

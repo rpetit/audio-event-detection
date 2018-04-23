@@ -15,7 +15,7 @@ from evdetect.utils import import_annotations, display_detection_result, detecti
 
 
 def bird():
-    filename_annotations = '../examples/data/birds.lab'
+    filename_annotations = '../examples/data/bird.lab'
     filename_audio = '../examples/data/bird.wav'
     filename_audio_filtered = '../examples/data/bird_filtered.wav'
 

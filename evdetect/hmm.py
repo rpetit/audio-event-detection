@@ -32,7 +32,7 @@ class HiddenMarkovModel:
 
     def __init__(self, a, pi, mu, scaling=1.0, end_state='all', min_float=1e-50):
         assert(a.ndim == 2 and mu.ndim == 2 and pi.ndim == 1 and a.shape[0] == a.shape[1] == mu.shape[0] == pi.size)
-        # assert(np.all(np.isclose(np.sum(mu, axis=1), np.ones(mu.shape[0]))))
+        assert(np.all(np.isclose(np.sum(mu, axis=1), np.ones(mu.shape[0]))))
 
         self.a = a
         self.pi = pi
@@ -263,33 +263,3 @@ class HiddenMarkovModel:
         seq_likelihood = np.sum(alpha[-1])
 
         return seq_likelihood, gamma, xi
-
-
-class ConstrainedHiddenMarkovModel(HiddenMarkovModel):
-    """Constrained hidden Markov model class
-
-    Model in which the hidden process is constrained
-
-    Parameters
-    ----------
-    mu : ndarray, shape (n_states, n_freq_bins)
-        Emission distributions parameters
-    scaling : float
-        Scaling factor used in emission density functions
-
-    """
-
-    def __init__(self, mu, scaling=1):
-        n_states = mu.shape[0]
-        
-        a = np.zeros((n_states, n_states)) + 1e-12
-
-        for i in range(n_states - 1):
-            a[i, i] = 0.5
-            a[i, i + 1] = 0.5
-
-        a[n_states - 1][n_states - 1] = 0.5
-
-        pi = np.array([1] + [1e-12] * (n_states - 1))
-
-        super(ConstrainedHiddenMarkovModel, self).__init__(a, pi, mu, scaling=scaling, end_state='last')

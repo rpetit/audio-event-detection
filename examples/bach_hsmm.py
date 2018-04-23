@@ -8,7 +8,7 @@ import numpy as np
 
 import librosa
 
-from evdetect.hsmm import ConstrainedHiddenSemiMarkovModel
+from evdetect.hsmm import HiddenSemiMarkovModel
 from evdetect.utils import generate_spectrum, display_detection_result, detection_filter
 
 
@@ -36,7 +36,11 @@ def pitch_sequence_detection():
     c5_spec = generate_spectrum(522, fs, a0, b, n_window, n_fft)
 
     # instantiation of the constrained hidden semi-Markov model
-    model = ConstrainedHiddenSemiMarkovModel(np.array([g4_spec, c5_spec]), np.array([7.5, 7.5]))
+    a = np.array([[0.0, 1.0], [0.0, 0.0]])
+    pi = np.array([1.0, 0.0])
+    mu = np.array([g4_spec, c5_spec])
+    nu = np.array([8, 8])
+    model = HiddenSemiMarkovModel(a, pi, mu, nu)
 
     # detection of the event's occurrences
     epsilon = 0.05
