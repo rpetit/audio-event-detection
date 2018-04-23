@@ -19,7 +19,7 @@ class HiddenSemiMarkovModel(HiddenMarkovModel):
         Initial probabilities
     mu : ndarray, shape (n_states, n_freq_bins)
         Emission distributions parameters (Dirichlet)
-    gamma : ndarray, shape (n_states,)
+    nu : ndarray, shape (n_states,)
         Duration distributions parameters (Poisson)
     scaling : float
         Scaling factor used in emission density functions
@@ -35,9 +35,9 @@ class HiddenSemiMarkovModel(HiddenMarkovModel):
 
     """
 
-    def __init__(self, a, pi, mu, gamma, scaling=1.0, end_state='all', min_float=1e-50):
-        assert(np.all(gamma > 0))
-        self.gamma = gamma
+    def __init__(self, a, pi, mu, nu, scaling=1.0, end_state='all', min_float=1e-50):
+        assert(np.all(nu > 0))
+        self.nu = nu
 
         super(HiddenSemiMarkovModel, self).__init__(a, pi, mu, scaling, end_state, min_float)
 
@@ -56,7 +56,7 @@ class HiddenSemiMarkovModel(HiddenMarkovModel):
         float
             Value of the duration log probability function associated with hidden state i evaluated at d
         """
-        return d * np.log(self.gamma[i]) - self.gamma[i] - np.sum(np.arange(d + 1))
+        return d * np.log(self.nu[i]) - self.nu[i] - np.sum(np.log(np.arange(1, d + 1)))
 
     def p(self, i, d):
         """Duration log probability functions
@@ -73,10 +73,10 @@ class HiddenSemiMarkovModel(HiddenMarkovModel):
         float
             Value of the duration probability function associated with hidden state i evaluated at d
         """
-        return self.gamma[i] ** d * np.exp(- self.gamma[i]) / factorial(d)
+        return self.nu[i] ** d * np.exp(- self.nu[i]) / factorial(d)
 
     # TODO: deal with overlapping matches
-    def detect_event(self, x, epsilon, delta, max_segment_length=50):
+    def detect_event(self, x, epsilon, delta, display=False, max_segment_length=50):
         """Event detection interface
 
         Parameters
@@ -87,6 +87,8 @@ class HiddenSemiMarkovModel(HiddenMarkovModel):
             Likelihood threshold
         delta : float
             Minimum subsequence length
+        display : bool
+            Whether to display detection results or not
         max_segment_length : int
             Maximum segment length
 
@@ -157,11 +159,12 @@ class HiddenSemiMarkovModel(HiddenMarkovModel):
                     length = c[2][0] - c[1][0] + 1
                     log_likelihood = c[0] + length * log_e
 
-                    print('\n' + "Log likelihood: {}".format(log_likelihood))
-                    print("Starting position: {} (in state {})".format(c[1][0], c[1][1]))
-                    print("End position: {} (in state {})".format(c[2][0], c[2][1]))
+                    if display:
+                        print('\n' + "Log likelihood: {}".format(log_likelihood))
+                        print("Starting position: {} (in state {})".format(c[1][0], c[1][1]))
+                        print("End position: {} (in state {})".format(c[2][0], c[2][1]))
 
-                    reported_subsequences.append(c)
+                    reported_subsequences.append((c[0], c[1][0], c[2][0]))
                     candidates.remove(c)
 
         return reported_subsequences
@@ -178,7 +181,53 @@ class HiddenSemiMarkovModel(HiddenMarkovModel):
             Number of EM iterations to perform
 
         """
-        pass
+        # num_train_seq = len(x_train)
+        #
+        # for _ in range(n_iter):
+        #
+        #     likelihoods = []
+        #     gamma = []
+        #     xi = []
+        #     tau = []
+        #
+        #     # E step
+        #     for k in range(num_train_seq):
+        #         seq_likelihood, seq_gamma, seq_xi, seq_tau = self._forward_backward(x_train[k])
+        #
+        #         likelihoods.append(seq_likelihood)
+        #         gamma.append(seq_gamma)
+        #         xi.append(seq_xi)
+        #         tau.append(seq_tau)
+        #
+        #     # M step
+        #     new_a = np.zeros_like(self.a)
+        #     new_mu = np.zeros_like(self.mu)
+        #     new_nu = np.zeros_like(self.nu)
+        #     new_pi = np.zeros_like(self.pi)
+        #
+        #     new_mu_norm = np.zeros(self.n_states)
+        #
+        #     for k in range(num_train_seq):
+        #         new_a += np.sum(xi[k] / likelihoods[k], axis=0)
+        #         new_pi += gamma[k][0] / likelihoods[k]
+        #
+        #         for i in range(self.n_states):
+        #             for t in range(x_train[k].shape[0]):
+        #                 normalized_frame = x_train[k][t] / np.sum(x_train[k][t])
+        #                 new_mu[i] += gamma[k][t, i] / likelihoods[k] * normalized_frame
+        #
+        #             new_mu_norm[i] += np.sum(gamma[k][:, i]) / likelihoods[k]
+        #
+        #     new_pi *= 1 / np.sum(new_pi)
+        #
+        #     for i in range(self.n_states):
+        #         new_a[i] *= 1 / np.sum(new_a[i])
+        #         new_mu[i] *= 1 / new_mu_norm[i]
+        #
+        #     self.a = new_a
+        #     self.mu = new_mu
+        #     self.nu = new_nu
+        #     self.pi = new_pi
 
     def _forward_backward(self, x):
         """Forward backward recursion
@@ -205,24 +254,21 @@ class ConstrainedHiddenSemiMarkovModel(HiddenSemiMarkovModel):
     ----------
     mu : ndarray, shape (n_states, n_freq_bins)
         Emission distributions parameters
-    gamma : ndarray, shape (n_states,)
+    nu : ndarray, shape (n_states,)
         Duration distributions parameters
     scaling : float
         Scaling factor used in emission density functions
 
     """
 
-    def __init__(self, mu, gamma, scaling=1):
+    def __init__(self, mu, nu, scaling=1):
         n_states = mu.shape[0]
 
         a = np.zeros((n_states, n_states)) + 1e-12
 
         for i in range(n_states - 1):
-            a[i, i] = 0.5
-            a[i, i + 1] = 0.5
-
-        a[n_states - 1][n_states - 1] = 1
+            a[i, i + 1] = 1
 
         pi = np.array([1] + [1e-12] * (n_states - 1))
 
-        super(ConstrainedHiddenSemiMarkovModel, self).__init__(a, pi, mu, gamma, scaling=scaling, end_state='last')
+        super(ConstrainedHiddenSemiMarkovModel, self).__init__(a, pi, mu, nu, scaling=scaling, end_state='last')

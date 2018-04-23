@@ -32,9 +32,11 @@ class HiddenMarkovModel:
 
     def __init__(self, a, pi, mu, scaling=1.0, end_state='all', min_float=1e-50):
         assert(a.ndim == 2 and mu.ndim == 2 and pi.ndim == 1 and a.shape[0] == a.shape[1] == mu.shape[0] == pi.size)
+        # assert(np.all(np.isclose(np.sum(mu, axis=1), np.ones(mu.shape[0]))))
+
         self.a = a
         self.pi = pi
-        self.mu = mu / np.sum(mu)
+        self.mu = mu
         self.scaling = scaling
 
         self.log_a = np.log(self.a + min_float)
@@ -81,7 +83,7 @@ class HiddenMarkovModel:
         normalized_spec = spec / np.sum(spec)
         return np.exp(- self.scaling * np.sum(self.mu[i] * np.log(self.mu[i] / normalized_spec)))
 
-    def detect_event(self, x, epsilon, delta):
+    def detect_event(self, x, epsilon, delta, display=False):
         """Event detection interface
         
         Parameters
@@ -92,6 +94,8 @@ class HiddenMarkovModel:
             Likelihood threshold
         delta : float
             Minimum subsequence length
+        display : bool
+            Whether to display detection results or not
 
         Returns
         -------
@@ -145,11 +149,12 @@ class HiddenMarkovModel:
                     length = c[2][0] - c[1][0] + 1
                     log_likelihood = c[0] + length * log_e
 
-                    print('\n' + "Log likelihood: {}".format(log_likelihood))
-                    print("Starting position: {} (in state {})".format(c[1][0], c[1][1]))
-                    print("End position: {} (in state {})".format(c[2][0], c[2][1]))
+                    if display:
+                        print('\n' + "Log likelihood: {}".format(log_likelihood))
+                        print("Starting position: {} (in state {})".format(c[1][0], c[1][1]))
+                        print("End position: {} (in state {})".format(c[2][0], c[2][1]))
 
-                    reported_subsequences.append(c)
+                    reported_subsequences.append((c[0], c[1][0], c[2][0]))
                     candidates.remove(c)
 
         return reported_subsequences
@@ -283,7 +288,7 @@ class ConstrainedHiddenMarkovModel(HiddenMarkovModel):
             a[i, i] = 0.5
             a[i, i + 1] = 0.5
 
-        a[n_states - 1][n_states - 1] = 1
+        a[n_states - 1][n_states - 1] = 0.5
 
         pi = np.array([1] + [1e-12] * (n_states - 1))
 

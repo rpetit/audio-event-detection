@@ -83,8 +83,8 @@ def display_detection_result(y, subsequences, fs, hop_length):
     librosa.display.specshow(d, y_axis='linear', x_axis='time')
 
     for subsequence in subsequences:
-        t_start = subsequence[1][0] * hop_length / fs
-        t_end = subsequence[2][0] * hop_length / fs
+        t_start = subsequence[1] * hop_length / fs
+        t_end = subsequence[2] * hop_length / fs
         plt.axvspan(t_start, t_end, facecolor='white', alpha=0.5)
 
     plt.colorbar(format='%+2.0f dB')
@@ -93,7 +93,6 @@ def display_detection_result(y, subsequences, fs, hop_length):
     plt.show()
 
 
-# TODO: deal with output path
 def detection_filter(y, subsequences, fs, hop_length, output_path):
     """Filter the input audio file according to detection results
 
@@ -114,8 +113,8 @@ def detection_filter(y, subsequences, fs, hop_length, output_path):
     output_y = np.copy(y) * 0.1
 
     for subsequence in subsequences:
-        t_start = subsequence[1][0] * hop_length
-        t_end = subsequence[2][0] * hop_length
+        t_start = subsequence[1] * hop_length
+        t_end = subsequence[2] * hop_length
         output_y[t_start:t_end] = 2 * y[t_start:t_end]
 
         librosa.output.write_wav(output_path, output_y, fs)
