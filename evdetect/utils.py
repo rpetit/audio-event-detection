@@ -20,7 +20,7 @@ def generate_spectrum(f0, fs, a0, b, n_window, n_fft):
 
     Parameters
     ----------
-    f0 : int
+    f0 : float
         Fundamental frequency
     fs : int
         Sampling frequency
@@ -43,7 +43,7 @@ def generate_spectrum(f0, fs, a0, b, n_window, n_fft):
     hann_window_fft = fft(hann_window, n_fft) / (len(hann_window) / 2.0)  # window's FFT
     hann_window_response = np.abs(fftshift(hann_window_fft) / abs(hann_window_fft).max())  # window's frequency response
 
-    n_harmonics = fs // (2 * f0)
+    n_harmonics = int(fs / (2 * f0))
     harmonic_spec = np.zeros(n_fft)
 
     # fill the harmonic spectrum array with exponentially decreasing amplitudes
@@ -110,12 +110,12 @@ def detection_filter(y, subsequences, fs, hop_length, output_path):
         Path to save the output .wav file
 
     """
-    output_y = np.copy(y) * 0.1
+    output_y = np.copy(y) * 0.05
 
     for subsequence in subsequences:
         t_start = subsequence[1] * hop_length
         t_end = subsequence[2] * hop_length
-        output_y[t_start:t_end] = 2 * y[t_start:t_end]
+        output_y[t_start:t_end] = 4 * y[t_start:t_end]
 
         librosa.output.write_wav(output_path, output_y, fs)
 
