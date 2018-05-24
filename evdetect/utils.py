@@ -110,12 +110,12 @@ def detection_filter(y, subsequences, fs, hop_length, output_path):
         Path to save the output .wav file
 
     """
-    output_y = np.copy(y) * 0.05
+    output_y = np.zeros_like(y)
 
     for subsequence in subsequences:
         t_start = subsequence[1] * hop_length
         t_end = subsequence[2] * hop_length
-        output_y[t_start:t_end] = 4 * y[t_start:t_end]
+        output_y[t_start:t_end] = y[t_start:t_end]
 
         librosa.output.write_wav(output_path, output_y, fs)
 
