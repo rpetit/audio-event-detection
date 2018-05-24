@@ -20,7 +20,9 @@ From the examples directory, run bird.py to get the following output :
 ![bird](bird.png)
 
 This will also output a .wav file in examples/results where the loudness have been increased in
-segments matching the event model.
+segments matching the event model.<br/>
+
+See [this page](https://romainpe.github.io/audio-event-detection) for more examples.
 
 ## References
 [1] A. Bietti, online learning for audio clustering and segmentation Master thesis, 2014 <br/><br/>
