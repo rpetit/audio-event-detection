@@ -23,11 +23,6 @@ class HiddenMarkovModel:
     min_float : float
         Minimum float value used to avoid 0 values in log computations
 
-    Returns
-    -------
-    list
-        List of reported subsequences
-
     """
 
     def __init__(self, a, pi, mu, scaling=1.0, end_state='all', min_float=1e-50):
