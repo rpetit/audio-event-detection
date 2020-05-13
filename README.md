@@ -1,5 +1,5 @@
 # Audio event detection
-Work conducted as an intern at IRCAM. <br/> <br/>
+Work conducted during an internship at IRCAM. <br/> <br/>
 <div align="left">
   <img src="http://www2.atiam.ircam.fr/wp-content/uploads/2011/07/logoircam.jpg" width="30%"><br><br>
 </div>
