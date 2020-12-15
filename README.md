@@ -1,7 +1,7 @@
 # Audio event detection
 Work conducted during an internship at IRCAM. <br/> <br/>
 <div align="left">
-  <img src="http://www2.atiam.ircam.fr/wp-content/uploads/2011/07/logoircam.jpg" width="30%"><br><br>
+  <img src="https://www.ircam.fr/media/uploads/images/logo/logoircam_noir.png" width="30%"><br><br>
 </div>
 
 ## Disclaimer
